@@ -1,10 +1,15 @@
 const express = require('express');
+const app = express();
 
 function keepAlive() {
-  const app = express();
-  app.get('/', (req, res) => res.send('iDayss x IcezyBrawlMartBOT is alive! ✅'));
-  const port = process.env.PORT || 3000;
-  app.listen(port, () => console.log(`🌐 Keep-alive web server running on port ${port}`));
+  app.get('/', (req, res) => {
+    res.send('Bot attivo 24/7!');
+  });
+
+  const PORT = process.env.PORT || 10000;
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server HTTP attivo ed ascolto sulla porta ${PORT}`);
+  });
 }
 
 module.exports = { keepAlive };
