@@ -1,4 +1,4 @@
-cconst { ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
 const config = require('../config');
 const { baseEmbed } = require('../utils/embeds');
 const { isStaffOrOwner } = require('../utils/permissions');
@@ -14,7 +14,6 @@ const START_BUTTON = {
 };
 
 async function runProofsCommand(interaction) {
-  // 1. Differisci SUBITO la risposta per bloccare il timeout di 3 secondi
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   if (!isStaffOrOwner(interaction.member)) {
@@ -26,7 +25,6 @@ async function runProofsCommand(interaction) {
     return interaction.editReply({ content: '❌ No order found for this ticket channel.' });
   }
 
-  // 2. Usa editReply al posto di reply
   await interaction.editReply({
     content: '📸 Please send the **proof image** (as an attachment) in this channel within the next 5 minutes. I will pick it up automatically.',
   });
