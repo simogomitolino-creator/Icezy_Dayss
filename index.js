@@ -1,9 +1,11 @@
 const { keepAlive } = require('./keepAlive');
-keepAlive();
 const fs = require('fs');
 const path = require('path');
 const { Client, GatewayIntentBits, Partials, Collection } = require('discord.js');
 const config = require('./config');
+
+// Avvia il server web per Render
+keepAlive();
 
 const client = new Client({
   intents: [
@@ -34,20 +36,5 @@ for (const file of fs.readdirSync(eventsPath).filter((f) => f.endsWith('.js'))) 
 
 process.on('unhandledRejection', (err) => console.error('Unhandled promise rejection:', err));
 
-(async () => {
-  await client.login(config.TOKEN);
-})();
-const express = require('express');
-const app = express();
-
-app.get('/', (req, res) => {
-  res.send('Bot Discord attivo 24/7!');
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server HTTP attivo sulla porta ${PORT}`);
-});
-
-// Login del bot
+// Login unico del bot
 client.login(config.TOKEN || process.env.DISCORD_TOKEN);
