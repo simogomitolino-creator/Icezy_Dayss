@@ -1,4 +1,4 @@
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+cconst { ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
 const config = require('../config');
 const { baseEmbed } = require('../utils/embeds');
 const { isStaffOrOwner } = require('../utils/permissions');
@@ -14,18 +14,21 @@ const START_BUTTON = {
 };
 
 async function runProofsCommand(interaction) {
+  // 1. Differisci SUBITO la risposta per bloccare il timeout di 3 secondi
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
   if (!isStaffOrOwner(interaction.member)) {
-    return interaction.reply({ content: '❌ Only staff can post proofs.', ephemeral: true });
+    return interaction.editReply({ content: '❌ Only staff can post proofs.' });
   }
 
   const order = await Order.findOne({ channelId: interaction.channel.id }).sort({ createdAt: -1 }).catch(() => null);
   if (!order) {
-    return interaction.reply({ content: '❌ No order found for this ticket channel.', ephemeral: true });
+    return interaction.editReply({ content: '❌ No order found for this ticket channel.' });
   }
 
-  await interaction.reply({
+  // 2. Usa editReply al posto di reply
+  await interaction.editReply({
     content: '📸 Please send the **proof image** (as an attachment) in this channel within the next 5 minutes. I will pick it up automatically.',
-    ephemeral: true,
   });
 
   const collector = interaction.channel.createMessageCollector({
@@ -41,12 +44,12 @@ async function runProofsCommand(interaction) {
       new ButtonBuilder().setCustomId(`proof_public_${order._id}_${encodeURIComponent(attachment.url)}`).setLabel('Show Buyer Name').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId(`proof_anon_${order._id}_${encodeURIComponent(attachment.url)}`).setLabel('Anonymous 💵').setStyle(ButtonStyle.Secondary),
     );
-    await interaction.followUp({ embeds: [embed], components: [row], ephemeral: true });
+    await interaction.followUp({ embeds: [embed], components: [row], flags: MessageFlags.Ephemeral });
   });
 
   collector.on('end', (collected) => {
     if (collected.size === 0) {
-      interaction.followUp({ content: '⌛ Timed out waiting for a proof image.', ephemeral: true }).catch(() => {});
+      interaction.followUp({ content: '⌛ Timed out waiting for a proof image.', flags: MessageFlags.Ephemeral }).catch(() => {});
     }
   });
 }
