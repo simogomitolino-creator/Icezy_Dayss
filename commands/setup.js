@@ -24,36 +24,43 @@ module.exports = {
     ),
 
   async execute(interaction) {
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    if (!interaction.deferred && !interaction.replied) {
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    }
 
-    const productKey = interaction.options.getString('product').toLowerCase().trim();
+    const rawProduct = interaction.options.getString('product');
     const imageAttachment = interaction.options.getAttachment('image');
+
+    if (!rawProduct) {
+      return interaction.editReply({ content: '❌ Please select a valid product option.' });
+    }
+
+    const productKey = rawProduct.toLowerCase().trim();
     const meta = config.PRODUCT_META[productKey];
 
     if (!meta) {
+      const validKeys = Object.keys(config.PRODUCT_META || {}).join(', ');
       return interaction.editReply({
-        content: `❌ Invalid product configuration key: \`${productKey}\`. Available keys: \`${Object.keys(config.PRODUCT_META).join(', ')}\``,
+        content: `❌ Invalid product configuration key: \`${productKey}\`. Available keys in config: \`${validKeys}\``,
       });
     }
 
     const embed = {
-      title: `${meta.emoji} ${meta.name.toUpperCase()}`,
-      description: `Welcome to **${config.BRAND_NAME}**!\n\nClick the button below to start your order setup.`,
-      color: config.COLOR_PRIMARY,
-      image: {
-        url: imageAttachment.url,
-      },
+      title: `${meta.emoji || '🛒'} ${meta.name ? meta.name.toUpperCase() : 'BOOST SERVICE'}`,
+      description: `Welcome to **${config.BRAND_NAME || 'Our Shop'}**!\n\nClick the button below to start your order setup.`,
+      color: config.COLOR_PRIMARY || 0x5865f2,
+      image: imageAttachment ? { url: imageAttachment.url } : undefined,
       footer: {
-        text: config.FOOTER,
+        text: config.FOOTER || 'Powered by IcezyBrawlMart',
       },
     };
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId(`create_ticket_${productKey}`)
-        .setLabel(meta.buttonLabel)
+        .setLabel(meta.buttonLabel || 'Buy Now')
         .setStyle(ButtonStyle.Primary)
-        .setEmoji(meta.emoji)
+        .setEmoji(meta.emoji || '🛒')
     );
 
     await interaction.channel.send({ embeds: [embed], components: [row] });
