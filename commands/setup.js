@@ -32,33 +32,33 @@ module.exports = {
     const imageAttachment = interaction.options.getAttachment('image');
 
     if (!rawProduct) {
-      return interaction.editReply({ content: '❌ Please select a valid product option.' });
+      return interaction.editReply({ content: '❌ Selected product option is invalid or empty.' });
     }
 
-    const productKey = rawProduct.toLowerCase().trim();
+    const productKey = String(rawProduct).toLowerCase().trim();
     const meta = config.PRODUCT_META[productKey];
 
     if (!meta) {
       const validKeys = Object.keys(config.PRODUCT_META || {}).join(', ');
       return interaction.editReply({
-        content: `❌ Invalid product configuration key: \`${productKey}\`. Available keys in config: \`${validKeys}\``,
+        content: `❌ Invalid product configuration key: \`${productKey}\`. Available keys: \`${validKeys}\``,
       });
     }
 
     const embed = {
-      title: `${meta.emoji || '🛒'} ${meta.name ? meta.name.toUpperCase() : 'BOOST SERVICE'}`,
-      description: `Welcome to **${config.BRAND_NAME || 'Our Shop'}**!\n\nClick the button below to start your order setup.`,
-      color: config.COLOR_PRIMARY || 0x5865f2,
+      title: `${meta.emoji || '🛒'} ${(meta.name || 'BOOST').toUpperCase()}`,
+      description: `Welcome to **${config.BRAND_NAME || 'Our Service'}**!\n\nClick the button below to start your order setup.`,
+      color: config.COLOR_PRIMARY || 0x8B2FE0,
       image: imageAttachment ? { url: imageAttachment.url } : undefined,
       footer: {
-        text: config.FOOTER || 'Powered by IcezyBrawlMart',
+        text: config.FOOTER || 'Powered by Iceyz BrawlMart',
       },
     };
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId(`create_ticket_${productKey}`)
-        .setLabel(meta.buttonLabel || 'Buy Now')
+        .setLabel(meta.buttonLabel || 'Get Started')
         .setStyle(ButtonStyle.Primary)
         .setEmoji(meta.emoji || '🛒')
     );
