@@ -6,21 +6,29 @@ module.exports = {
     .setName('setup')
     .setDescription('Setup product purchase panel with custom image')
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-    .addStringOption((o) =>
-      o.setName('product')
-        .setDescription('Select product panel')
-        .setRequired(true)
-        .addChoices(
-          { name: 'Ranked Boost', value: 'ranked' },
-          { name: 'Prestige Boost', value: 'prestige' },
-          { name: 'Matcherino Boost', value: 'matcherino' },
-          { name: 'Winstreak Boost', value: 'winstreak' }
-        )
+    .addSubcommand((sub) =>
+      sub
+        .setName('ranked')
+        .setDescription('Setup Ranked Boost panel')
+        .addAttachmentOption((o) => o.setName('image').setDescription('Attach panel image').setRequired(true))
     )
-    .addAttachmentOption((o) =>
-      o.setName('image')
-        .setDescription('Attach showcase image for panel')
-        .setRequired(true)
+    .addSubcommand((sub) =>
+      sub
+        .setName('prestige')
+        .setDescription('Setup Prestige Boost panel')
+        .addAttachmentOption((o) => o.setName('image').setDescription('Attach panel image').setRequired(true))
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName('matcherino')
+        .setDescription('Setup Matcherino Boost panel')
+        .addAttachmentOption((o) => o.setName('image').setDescription('Attach panel image').setRequired(true))
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName('winstreak')
+        .setDescription('Setup Winstreak Boost panel')
+        .addAttachmentOption((o) => o.setName('image').setDescription('Attach panel image').setRequired(true))
     ),
 
   async execute(interaction) {
@@ -28,14 +36,19 @@ module.exports = {
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     }
 
-    const rawProduct = interaction.options.getString('product');
-    const imageAttachment = interaction.options.getAttachment('image');
-
-    if (!rawProduct) {
-      return interaction.editReply({ content: '❌ Selected product option is invalid or empty.' });
+    // Estrae sia il sottocomando che eventuale string option per massima sicurezza
+    let productKey = interaction.options.getSubcommand(false);
+    if (!productKey) {
+      productKey = interaction.options.getString('product');
     }
 
-    const productKey = String(rawProduct).toLowerCase().trim();
+    const imageAttachment = interaction.options.getAttachment('image');
+
+    if (!productKey) {
+      return interaction.editReply({ content: '❌ Impossible to determine selected product.' });
+    }
+
+    productKey = String(productKey).toLowerCase().trim();
     const meta = config.PRODUCT_META[productKey];
 
     if (!meta) {
