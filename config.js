@@ -1,7 +1,7 @@
 require('dotenv').config();
 
 module.exports = {
-  TOKEN: process.env.DISCORD_TOKEN,
+  TOKEN: process.env.TOKEN,
   CLIENT_ID: process.env.CLIENT_ID,
   GUILD_ID: process.env.GUILD_ID,
   MONGODB_URI: process.env.MONGODB_URI,
@@ -12,31 +12,54 @@ module.exports = {
   BRAND_NAME: 'iDayss × IcezyBrawlMartBOT',
   FOOTER: 'Powered by Iceyz BrawlMart™',
 
-  // Colors (dark purple / electric blue theme, matching the reference screenshots)
-  COLOR_PRIMARY: 0x8B2FE0, // purple
-  COLOR_BLUE: 0x3B82F6,    // electric blue
+  // Colors
+  COLOR_PRIMARY: 0x8B2FE0,
+  COLOR_BLUE: 0x3B82F6,
   COLOR_SUCCESS: 0x2ECC71,
   COLOR_DANGER: 0xE74C3C,
   COLOR_WARNING: 0xF1C40F,
 
-  // Category where ticket channels are created
+  // Channels & Categories
   TICKET_CATEGORY_NAME: 'Tickets',
   COMPLETED_JOBS_CHANNEL: 'completed-jobs',
   CUSTOMER_VOUCHES_CHANNEL: 'customer-vouches',
 
+  // Metodi di pagamento (Incolla qui le ID/Emoji del tuo server)
   PAYMENT_METHODS: [
-    { label: 'PayPal', value: 'paypal', emoji: '💳' },
-    { label: 'Venmo', value: 'venmo', emoji: '💸' },
-    { label: 'Cash App', value: 'cashapp', emoji: '💵' },
-    { label: 'Wise', value: 'wise', emoji: '🌍' },
-    { label: 'Apple Pay', value: 'applepay', emoji: '🍎' },
-    { label: 'Zelle', value: 'zelle', emoji: '🏦' },
+    { label: 'PayPal', value: 'paypal', emoji: '1514284948423573715' },
+    { label: 'Revolut Jr', value: 'revolut_jr', emoji: '1540041111190511676' },
+    { label: 'Venmo', value: 'venmo', emoji: '1540040129052409866' },
+    { label: 'Cashapp', value: 'cashapp', emoji: '1514285356206522408' },
+    { label: 'Wise', value: 'wise', emoji: '1540040647820447835' },
+    { label: 'Apple Pay', value: 'apple_pay', emoji: '1514285209678385343' },
+    { label: 'Zelle', value: 'zelle', emoji: '1540040836434239520' },
+    { label: 'Binance', value: 'binance', emoji: '1540040959658692719' },
+    { label: 'Revolut', value: 'revolut', emoji: '154004111119051167' },
+    { label: 'Chime', value: 'chime', emoji: '1540041250454110250' },
+    { label: 'Skrill', value: 'skrill', emoji: '1540041384403144754' },
+    { label: 'BitCoin', value: 'bitcoin', emoji: '1540041561352441869' },
+    { label: 'Litecoin', value: 'litecoin', emoji: '1540041834770735124' },
+    { label: 'Ethereum', value: 'ethereum', emoji: '1540041951259271208' },
+    { label: 'Solana', value: 'solana', emoji: '1540044493804404747' },
+    { label: 'Tether', value: 'tether', emoji: '1540044537072713809' },
+    { label: 'Bank Transfer Portal', value: 'bank_transfer', emoji: '🏦' },
   ],
 
-  // Payment methods that require staff to manually input info / proxy via Heatz
+  // Opzioni Power 11 per Ranked Boost
+  POWER11_OPTIONS: [
+    { label: '0-10', value: '0_10' },
+    { label: '11-20', value: '11_20' },
+    { label: '21-30', value: '21_30' },
+    { label: '31-40', value: '31_40' },
+    { label: '41-50', value: '41_50' },
+    { label: '51-60', value: '51_60' },
+    { label: '61-70', value: '61_70' },
+    { label: '71+', value: '71_plus' },
+  ],
+
   PROXY_PAYMENT_METHODS: ['zelle', 'wise'],
 
-  // Full rank ladder used for Ranked Boost, in order (low -> high)
+  // Ranks
   RANKS: [
     { label: 'Bronze I', emoji: '🥉' }, { label: 'Bronze II', emoji: '🥉' }, { label: 'Bronze III', emoji: '🥉' },
     { label: 'Silver I', emoji: '⚪' }, { label: 'Silver II', emoji: '⚪' }, { label: 'Silver III', emoji: '⚪' },
@@ -47,7 +70,6 @@ module.exports = {
     { label: 'Masters I', emoji: '⭐' }, { label: 'Masters II', emoji: '⭐' }, { label: 'Masters III', emoji: '⭐' },
     { label: 'Pro', emoji: '🏆' },
   ],
-  // Cost (in $) to climb from rank[i] to rank[i+1]. Edit freely to match your real prices.
   RANK_STEP_COSTS: [
     0.5, 0.5, 0.75, 0.75, 0.75, 1, 1, 1.5, 2, 2, 2.5, 3, 4, 5, 6, 8, 10, 15, 30, 60, 80,
   ],
@@ -75,13 +97,6 @@ module.exports = {
   ],
   WINSTREAK_BRAWLER_CHOICE_SURCHARGE: 5,
 
-  POWER11_OPTIONS: [
-    { label: '0-10', value: '0_10' }, { label: '11-20', value: '11_20' },
-    { label: '21-30', value: '21_30' }, { label: '31-40', value: '31_40' },
-    { label: '41-50', value: '41_50' }, { label: '51-60', value: '51_60' },
-    { label: '61-70', value: '61_70' }, { label: '71+', value: '71_plus' },
-  ],
-
   PRODUCT_META: {
     ranked: { name: 'Ranked Boost', emoji: '🥊', buttonLabel: 'Get Your Rank Upgraded', hasServiceType: true },
     prestige: { name: 'Prestige Boost', emoji: '🛡️', buttonLabel: 'Get Your Prestige', hasServiceType: true },
@@ -89,3 +104,4 @@ module.exports = {
     winstreak: { name: 'Winstreak Boost', emoji: '🔥', buttonLabel: 'Get Your Longest Winstreak', hasServiceType: false },
   },
 };
+                                                                                                           

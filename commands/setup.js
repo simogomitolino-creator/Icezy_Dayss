@@ -1,61 +1,60 @@
-const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
 const config = require('../config');
-const { baseEmbed } = require('../utils/embeds');
-const { isStaffOrOwner } = require('../utils/permissions');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('setup')
-    .setDescription('Post a shop setup panel in this channel')
+    .setDescription('Setup product purchase panel with custom image')
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-    .addSubcommand((s) => s.setName('ranked').setDescription('Post the Ranked Boost panel'))
-    .addSubcommand((s) => s.setName('prestige').setDescription('Post the Prestige Boost panel'))
-    .addSubcommand((s) => s.setName('matcherino').setDescription('Post the Matcherino Boost panel'))
-    .addSubcommand((s) => s.setName('winstreak').setDescription('Post the Winstreak Boost panel'))
-    .addSubcommand((s) => s.setName('ticket').setDescription('Post the general support/ticket panel')),
+    .addStringOption((o) =>
+      o.setName('product')
+        .setDescription('Select product panel')
+        .setRequired(true)
+        .addChoices(
+          { name: 'Ranked Boost', value: 'ranked' },
+          { name: 'Prestige Boost', value: 'prestige' },
+          { name: 'Matcherino Boost', value: 'matcherino' },
+          { name: 'Winstreak Boost', value: 'winstreak' }
+        )
+    )
+    .addAttachmentOption((o) =>
+      o.setName('image')
+        .setDescription('Attach showcase image for panel')
+        .setRequired(true)
+    ),
 
   async execute(interaction) {
-    if (!isStaffOrOwner(interaction.member)) {
-      return interaction.reply({ content: '❌ Only staff can use /setup.', ephemeral: true });
-    }
-    const sub = interaction.options.getSubcommand();
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-    if (sub === 'ticket') {
-      const embed = baseEmbed({
-        title: 'Select An Option Below 🚀',
-        description: '**Rules** ✅\n• Follow the directions of our bots if given\n• Do not spam ping staff\n• Be patient, support has many tickets to handle\n\n**Select what type of ticket you want to be opened from the dropdown below** ⬇️',
-        color: config.COLOR_PRIMARY,
-      });
-      const menu = new StringSelectMenuBuilder().setCustomId('ticket_type_select').setPlaceholder('Choose an option').addOptions([
-        { label: 'Purchase A Brawl Service', description: 'Purchase one of our many different brawl services', value: 'purchase', emoji: '🛒' },
-        { label: 'Apply For A Role', description: 'Apply: Support, Booster, Chat Mod, or Reporter role', value: 'apply', emoji: '📋' },
-        { label: 'Get Help From Support', description: 'Get help with an issue relating to this server', value: 'support', emoji: '🙋' },
-      ]);
-      return interaction.reply({ content: '✅ Panel posted!', ephemeral: true }).then(() =>
-        interaction.channel.send({ embeds: [embed], components: [new ActionRowBuilder().addComponents(menu)] })
-      );
+    const productKey = interaction.options.getString('product');
+    const imageAttachment = interaction.options.getAttachment('image');
+    const meta = config.PRODUCT_META[productKey];
+
+    if (!meta) {
+      return interaction.editReply({ content: '❌ Invalid product configuration key.' });
     }
 
-    const meta = config.PRODUCT_META[sub];
-    if (!meta) return interaction.reply({ content: '❌ Unknown panel.', ephemeral: true });
-
-    const descriptions = {
-      ranked: '• Climb the ranks with professional boosting service\n• Fast, secure, and reliable rank progression\n• Experienced boosters with proven track records',
-      prestige: '• Unlock prestige levels for your brawlers\n• Quick and efficient prestige progression\n• Show off your dedication with prestige ranks',
-      matcherino: '• Professional matcherino tournament services\n• Competitive edge with experienced players\n• Tournament ready team support',
-      winstreak: '• Achieve impressive winstreaks with pro players\n• Dominate matches and build your streak\n• Consistent wins with skilled teammates',
+    const embed = {
+      title: `${meta.emoji} ${meta.name.toUpperCase()}`,
+      description: `Welcome to **${config.BRAND_NAME}**!\n\nClick the button below to start your order setup.`,
+      color: config.COLOR_PRIMARY,
+      image: {
+        url: imageAttachment.url,
+      },
+      footer: {
+        text: config.FOOTER,
+      },
     };
 
-    const embed = baseEmbed({
-      title: `${meta.emoji} ${meta.name} Service`,
-      description: `**What We Offer**\n${descriptions[sub]}`,
-      color: config.COLOR_PRIMARY,
-    });
     const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId(`start_${sub}`).setLabel(meta.buttonLabel).setStyle(ButtonStyle.Primary).setEmoji(meta.emoji),
+      new ButtonBuilder()
+        .setCustomId(`create_ticket_${productKey}`)
+        .setLabel(meta.buttonLabel)
+        .setStyle(ButtonStyle.Primary)
+        .setEmoji(meta.emoji)
     );
 
-    await interaction.reply({ content: '✅ Panel posted!', ephemeral: true });
     await interaction.channel.send({ embeds: [embed], components: [row] });
+    await interaction.editReply({ content: `✅ **${meta.name}** panel with image posted successfully!` });
   },
 };
