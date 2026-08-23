@@ -12,7 +12,72 @@ const Order = require('../models/Order');
 const { baseEmbed } = require('../utils/embeds');
 
 /**
- * Gestisce tutte le interazioni dai menu a tendina e dai pulsanti del flusso d'ordine
+ * Avvia la creazione dell'ordine e del canale Ticket quando si clicca il pulsante del pannello
+ */
+async function startOrder(interaction, productKey) {
+  if (!interaction.deferred && !interaction.replied) {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  }
+
+  const meta = config.PRODUCT_META[productKey];
+  if (!meta) {
+    return interaction.editReply({ content: '❌ Invalid product selected.' });
+  }
+
+  const guild = interaction.guild;
+  const category = guild.channels.cache.find(
+    (c) => c.name === config.TICKET_CATEGORY_NAME && c.type === ChannelType.GuildCategory
+  );
+
+  // Crea il canale ticket privato per l'utente
+  const ticketChannel = await guild.channels.create({
+    name: `${productKey}-${interaction.user.username}`,
+    type: ChannelType.GuildText,
+    parent: category ? category.id : null,
+    permissionOverwrites: [
+      {
+        id: guild.id,
+        deny: [PermissionFlagsBits.ViewChannel],
+      },
+      {
+        id: interaction.user.id,
+        allow: [
+          PermissionFlagsBits.ViewChannel,
+          PermissionFlagsBits.SendMessages,
+          PermissionFlagsBits.AttachFiles,
+        ],
+      },
+    ],
+  });
+
+  // Crea l'ordine nel Database MongoDB
+  await Order.create({
+    channelId: ticketChannel.id,
+    userId: interaction.user.id,
+    product: productKey,
+    status: 'pending',
+    price: 0,
+    details: {},
+  });
+
+  const embed = baseEmbed({
+    title: `${meta.emoji} ${meta.name} Setup`,
+    description: `Welcome <@${interaction.user.id}>! Please configure your order preferences below.`,
+    footer: config.FOOTER,
+  });
+
+  await ticketChannel.send({
+    content: `<@${interaction.user.id}>`,
+    embeds: [embed],
+  });
+
+  await interaction.editReply({
+    content: `✅ Ticket created! Please head over to <#${ticketChannel.id}> to complete your order.`,
+  });
+}
+
+/**
+ * Gestisce le selezioni dai Menu a Tendina
  */
 async function handleSelect(interaction) {
   if (!interaction.deferred && !interaction.replied) {
@@ -36,7 +101,7 @@ async function handleSelect(interaction) {
       await order.save();
 
       await interaction.editReply({
-        content: `✅ Brawler selection set to: **${selectedValue === 'client' ? 'Client Picks (+$5)' : 'Booster Picks'}**.\n💰 Updated Price: **$${newPrice.toFixed(2)}**`,
+        content: `✅ Brawler selection set to: **${selectedValue === 'client' ? 'Client Picks (+$5)' : 'Booster Picks'}**.\n💰 Total Price: **$${newPrice.toFixed(2)}**`,
         components: [],
       });
     } else {
@@ -48,7 +113,7 @@ async function handleSelect(interaction) {
     return;
   }
 
-  // 2. Scelta Power 11 Brawlers per Ranked Boost
+  // 2. Scelta Power 11 Brawlers per Ranked
   if (customId === 'ranked_p11_select') {
     const selectedValue = interaction.values[0];
     await Order.findOneAndUpdate(
@@ -62,34 +127,10 @@ async function handleSelect(interaction) {
     });
     return;
   }
-
-  // 3. Scelta Ranks (From Rank / To Rank)
-  if (customId === 'ranked_from_select' || customId === 'ranked_to_select') {
-    const selectedValue = interaction.values[0];
-    const fieldToUpdate = customId === 'ranked_from_select' ? 'details.fromRank' : 'details.toRank';
-
-    const order = await Order.findOneAndUpdate(
-      { channelId: interaction.channel.id, status: 'pending' },
-      { $set: { [fieldToUpdate]: selectedValue } },
-      { new: true }
-    );
-
-    if (order && order.details.fromRank && order.details.toRank) {
-      const calculatedPrice = calculateRankedPrice(order.details.fromRank, order.details.toRank);
-      order.price = calculatedPrice;
-      await order.save();
-
-      await interaction.followUp({
-        content: `📈 Rank updated: **${order.details.fromRank}** ➔ **${order.details.toRank}**\n💰 Calculated Total: **$${calculatedPrice.toFixed(2)}**`,
-        flags: MessageFlags.Ephemeral,
-      });
-    }
-    return;
-  }
 }
 
 /**
- * Calcola il prezzo del Ranked Boost in base ai gradi selezionati
+ * Calcola il prezzo per il Ranked Boost
  */
 function calculateRankedPrice(fromRankLabel, toRankLabel) {
   const ranks = config.RANKS;
@@ -109,7 +150,7 @@ function calculateRankedPrice(fromRankLabel, toRankLabel) {
 }
 
 /**
- * Menu a tendina per la selezione dei Power 11
+ * Menu Select per Power 11
  */
 function getPower11SelectMenu() {
   const options = config.POWER11_OPTIONS.map((opt) => ({
@@ -127,7 +168,7 @@ function getPower11SelectMenu() {
 }
 
 /**
- * Menu a tendina per i metodi di pagamento (usando gli ID o le Emoji del config)
+ * Menu Select per Metodi di Pagamento
  */
 function getPaymentSelectMenu() {
   const options = config.PAYMENT_METHODS.map((method) => {
@@ -150,6 +191,7 @@ function getPaymentSelectMenu() {
 }
 
 module.exports = {
+  startOrder,
   handleSelect,
   calculateRankedPrice,
   getPower11SelectMenu,

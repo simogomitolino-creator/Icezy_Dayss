@@ -26,12 +26,14 @@ module.exports = {
   async execute(interaction) {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-    const productKey = interaction.options.getString('product');
+    const productKey = interaction.options.getString('product').toLowerCase().trim();
     const imageAttachment = interaction.options.getAttachment('image');
     const meta = config.PRODUCT_META[productKey];
 
     if (!meta) {
-      return interaction.editReply({ content: '❌ Invalid product configuration key.' });
+      return interaction.editReply({
+        content: `❌ Invalid product configuration key: \`${productKey}\`. Available keys: \`${Object.keys(config.PRODUCT_META).join(', ')}\``,
+      });
     }
 
     const embed = {
