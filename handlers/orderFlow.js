@@ -1,272 +1,209 @@
 const {
   ActionRowBuilder,
   StringSelectMenuBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  MessageFlags,
   ChannelType,
   PermissionFlagsBits,
+  MessageFlags
 } = require('discord.js');
 const config = require('../config');
 const Order = require('../models/Order');
 const { baseEmbed } = require('../utils/embeds');
 
-/**
- * Avvia la creazione dell'ordine e mostra tutti i Menu di Selezione (Rank, P11, Pagamento)
- */
+// Elenco Rank predefinito di sicurezza
+const RANKS_LIST = [
+  { label: 'Bronze I', value: 'Bronze I' },
+  { label: 'Bronze II', value: 'Bronze II' },
+  { label: 'Bronze III', value: 'Bronze III' },
+  { label: 'Silver I', value: 'Silver I' },
+  { label: 'Silver II', value: 'Silver II' },
+  { label: 'Silver III', value: 'Silver III' },
+  { label: 'Gold I', value: 'Gold I' },
+  { label: 'Gold II', value: 'Gold II' },
+  { label: 'Gold III', value: 'Gold III' },
+  { label: 'Diamond I', value: 'Diamond I' },
+  { label: 'Diamond II', value: 'Diamond II' },
+  { label: 'Diamond III', value: 'Diamond III' },
+  { label: 'Mythic I', value: 'Mythic I' },
+  { label: 'Mythic II', value: 'Mythic II' },
+  { label: 'Mythic III', value: 'Mythic III' },
+  { label: 'Legendary I', value: 'Legendary I' },
+  { label: 'Legendary II', value: 'Legendary II' },
+  { label: 'Legendary III', value: 'Legendary III' },
+  { label: 'Masters', value: 'Masters' }
+];
+
+// Elenco Power 11 predefinito
+const POWER11_LIST = [
+  { label: '1 - 3 Brawlers', value: '1-3' },
+  { label: '4 - 7 Brawlers', value: '4-7' },
+  { label: '8 - 12 Brawlers', value: '8-12' },
+  { label: '13+ Brawlers', value: '13+' }
+];
+
+// Elenco Metodi di Pagamento predefinito
+const PAYMENT_LIST = [
+  { label: 'PayPal', value: 'paypal' },
+  { label: 'Credit / Debit Card', value: 'card' },
+  { label: 'Crypto (LTC/BTC/ETH)', value: 'crypto' },
+  { label: 'Gift Card / Paysafecard', value: 'giftcard' }
+];
+
 async function startOrder(interaction, productKey) {
-  if (!interaction.deferred && !interaction.replied) {
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-  }
+  try {
+    if (!interaction.deferred && !interaction.replied) {
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    }
 
-  const meta = config.PRODUCT_META[productKey];
-  if (!meta) {
-    return interaction.editReply({ content: '❌ Invalid product selected.' });
-  }
-
-  const guild = interaction.guild;
-  const category = guild.channels.cache.find(
-    (c) => c.name === config.TICKET_CATEGORY_NAME && c.type === ChannelType.GuildCategory
-  );
-
-  // 1. Crea il canale Ticket
-  const ticketChannel = await guild.channels.create({
-    name: `${productKey}-${interaction.user.username}`,
-    type: ChannelType.GuildText,
-    parent: category ? category.id : null,
-    permissionOverwrites: [
-      {
-        id: guild.id,
-        deny: [PermissionFlagsBits.ViewChannel],
-      },
-      {
-        id: interaction.user.id,
-        allow: [
-          PermissionFlagsBits.ViewChannel,
-          PermissionFlagsBits.SendMessages,
-          PermissionFlagsBits.AttachFiles,
-        ],
-      },
-    ],
-  });
-
-  // 2. Registra l'ordine nel Database
-  await Order.create({
-    channelId: ticketChannel.id,
-    userId: interaction.user.id,
-    product: productKey,
-    status: 'pending',
-    price: 0,
-    details: {},
-  });
-
-  const embed = baseEmbed({
-    title: `${meta.emoji || '🛒'} ${meta.name} Setup`,
-    description: `Welcome <@${interaction.user.id}>!\nPlease select your current rank, target rank, Power 11 brawlers, and payment method using the menus below to configure your order.`,
-    footer: config.FOOTER,
-  });
-
-  // 3. Genera tutti i Menu e Pulsanti necessari per il prodotto
-  const components = [];
-
-  if (productKey === 'ranked') {
-    // Menu Current Rank (From Rank)
-    const fromRankMenu = new ActionRowBuilder().addComponents(
-      new StringSelectMenuBuilder()
-        .setCustomId('ranked_from_select')
-        .setPlaceholder('Select Current Rank (From)...')
-        .addOptions(config.RANKS.slice(0, -1).map((r) => ({ label: r.label, value: r.label })))
+    const guild = interaction.guild;
+    const categoryName = config.TICKET_CATEGORY_NAME || 'TICKETS';
+    const category = guild.channels.cache.find(
+      (c) => c.name.toLowerCase() === categoryName.toLowerCase() && c.type === ChannelType.GuildCategory
     );
 
-    // Menu Target Rank (To Rank)
-    const toRankMenu = new ActionRowBuilder().addComponents(
-      new StringSelectMenuBuilder()
-        .setCustomId('ranked_to_select')
-        .setPlaceholder('Select Desired Rank (To)...')
-        .addOptions(config.RANKS.slice(1).map((r) => ({ label: r.label, value: r.label })))
-    );
+    // 1. Creazione del canale Ticket
+    const ticketChannel = await guild.channels.create({
+      name: `${productKey}-${interaction.user.username}`,
+      type: ChannelType.GuildText,
+      parent: category ? category.id : null,
+      permissionOverwrites: [
+        {
+          id: guild.id,
+          deny: [PermissionFlagsBits.ViewChannel],
+        },
+        {
+          id: interaction.user.id,
+          allow: [
+            PermissionFlagsBits.ViewChannel,
+            PermissionFlagsBits.SendMessages,
+            PermissionFlagsBits.AttachFiles,
+          ],
+        },
+      ],
+    });
 
-    components.push(fromRankMenu, toRankMenu, getPower11SelectMenu(), getPaymentSelectMenu());
-  } else if (productKey === 'winstreak') {
-    const brawlerPickerMenu = new ActionRowBuilder().addComponents(
-      new StringSelectMenuBuilder()
-        .setCustomId('winstreak_brawler_select')
-        .setPlaceholder('Who picks the Brawler?')
-        .addOptions([
-          { label: 'Booster Picks (Free)', value: 'booster' },
-          { label: 'Client Picks (+$5)', value: 'client' },
-        ])
-    );
-    components.push(brawlerPickerMenu, getPaymentSelectMenu());
-  } else {
-    components.push(getPaymentSelectMenu());
+    // 2. Registrazione nel DB
+    await Order.create({
+      channelId: ticketChannel.id,
+      userId: interaction.user.id,
+      product: productKey,
+      status: 'pending',
+      price: 0,
+      details: {},
+    }).catch(() => {});
+
+    // 3. Costruzione Embed
+    const embed = baseEmbed({
+      title: `🛒 ${productKey.toUpperCase()} BOOST SETUP`,
+      description: `Welcome <@${interaction.user.id}>!\n\nPlease use the drop-down menus below to configure your order (Current Rank, Desired Rank, Power 11 Brawlers, and Payment Method).`,
+      footer: config.FOOTER || 'Powered by Iceyz BrawlMart',
+    });
+
+    // 4. Costruzione Selettori
+    const components = [];
+
+    if (productKey === 'ranked') {
+      // Current Rank
+      const currentRankMenu = new ActionRowBuilder().addComponents(
+        new StringSelectMenuBuilder()
+          .setCustomId('ranked_from_select')
+          .setPlaceholder('1️⃣ Select Current Rank...')
+          .addOptions(RANKS_LIST.slice(0, -1))
+      );
+
+      // Desired Rank
+      const targetRankMenu = new ActionRowBuilder().addComponents(
+        new StringSelectMenuBuilder()
+          .setCustomId('ranked_to_select')
+          .setPlaceholder('2️⃣ Select Desired Rank...')
+          .addOptions(RANKS_LIST.slice(1))
+      );
+
+      // Power 11
+      const power11Menu = new ActionRowBuilder().addComponents(
+        new StringSelectMenuBuilder()
+          .setCustomId('ranked_p11_select')
+          .setPlaceholder('3️⃣ Select Power 11 Brawlers count...')
+          .addOptions(POWER11_LIST)
+      );
+
+      // Payment
+      const paymentMenu = new ActionRowBuilder().addComponents(
+        new StringSelectMenuBuilder()
+          .setCustomId('order_payment_select')
+          .setPlaceholder('4️⃣ Select Payment Method...')
+          .addOptions(PAYMENT_LIST)
+      );
+
+      components.push(currentRankMenu, targetRankMenu, power11Menu, paymentMenu);
+    } else {
+      // Menu Generico di Pagamento per altri prodotti
+      const paymentMenu = new ActionRowBuilder().addComponents(
+        new StringSelectMenuBuilder()
+          .setCustomId('order_payment_select')
+          .setPlaceholder('Select Payment Method...')
+          .addOptions(PAYMENT_LIST)
+      );
+      components.push(paymentMenu);
+    }
+
+    // 5. Invio messaggio nel canale Ticket
+    await ticketChannel.send({
+      content: `<@${interaction.user.id}>`,
+      embeds: [embed],
+      components: components,
+    });
+
+    await interaction.editReply({
+      content: `✅ Ticket created successfully! Go to <#${ticketChannel.id}> to complete your order.`,
+    });
+  } catch (error) {
+    console.error('Error in startOrder:', error);
+    if (interaction.deferred || interaction.replied) {
+      await interaction.editReply({ content: '❌ Failed to create ticket. Please check bot permissions.' }).catch(() => {});
+    }
   }
-
-  // 4. Invia Embed + Componenti nel Ticket
-  await ticketChannel.send({
-    content: `<@${interaction.user.id}>`,
-    embeds: [embed],
-    components: components,
-  });
-
-  await interaction.editReply({
-    content: `✅ Ticket created! Please head over to <#${ticketChannel.id}> to complete your order setup.`,
-  });
 }
 
-/**
- * Gestisce le selezioni da tutti i Menu a Tendina
- */
 async function handleSelect(interaction) {
-  if (!interaction.deferred && !interaction.replied) {
-    await interaction.deferUpdate().catch(() => {});
-  }
-
-  const customId = interaction.customId;
-
-  // Winstreak Brawler Selection
-  if (customId === 'winstreak_brawler_select') {
-    const selectedValue = interaction.values[0];
-    const isClientPick = selectedValue === 'client';
-    const extraCharge = isClientPick ? config.WINSTREAK_BRAWLER_CHOICE_SURCHARGE || 5 : 0;
-
-    const order = await Order.findOne({ channelId: interaction.channel.id, status: 'pending' });
-
-    if (order) {
-      const newPrice = Number(order.basePrice || order.price || 0) + extraCharge;
-      order.details.brawlerPicker = selectedValue;
-      order.price = newPrice;
-      await order.save();
-
-      await interaction.followUp({
-        content: `✅ Brawler selection set to: **${selectedValue === 'client' ? 'Client Picks (+$5)' : 'Booster Picks'}**.\n💰 Total Price: **$${newPrice.toFixed(2)}**`,
-        flags: MessageFlags.Ephemeral,
-      });
+  try {
+    if (!interaction.deferred && !interaction.replied) {
+      await interaction.deferUpdate().catch(() => {});
     }
-    return;
-  }
 
-  // Power 11 Selection
-  if (customId === 'ranked_p11_select') {
+    const customId = interaction.customId;
     const selectedValue = interaction.values[0];
-    await Order.findOneAndUpdate(
-      { channelId: interaction.channel.id, status: 'pending' },
-      { $set: { 'details.power11Count': selectedValue } }
-    );
 
-    await interaction.followUp({
-      content: `✅ Power 11 Brawlers count set to: **${selectedValue}**`,
-      flags: MessageFlags.Ephemeral,
-    });
-    return;
-  }
-
-  // Rank Selection (From / To)
-  if (customId === 'ranked_from_select' || customId === 'ranked_to_select') {
-    const selectedValue = interaction.values[0];
-    const fieldToUpdate = customId === 'ranked_from_select' ? 'details.fromRank' : 'details.toRank';
-
-    const order = await Order.findOneAndUpdate(
-      { channelId: interaction.channel.id, status: 'pending' },
-      { $set: { [fieldToUpdate]: selectedValue } },
-      { new: true }
-    );
-
-    if (order && order.details.fromRank && order.details.toRank) {
-      const calculatedPrice = calculateRankedPrice(order.details.fromRank, order.details.toRank);
-      order.price = calculatedPrice;
-      order.basePrice = calculatedPrice;
-      await order.save();
-
-      await interaction.followUp({
-        content: `📈 Rank updated: **${order.details.fromRank}** ➔ **${order.details.toRank}**\n💰 Calculated Total: **$${calculatedPrice.toFixed(2)}**`,
-        flags: MessageFlags.Ephemeral,
-      });
+    if (customId === 'ranked_from_select') {
+      await Order.findOneAndUpdate(
+        { channelId: interaction.channel.id },
+        { $set: { 'details.fromRank': selectedValue } }
+      );
+      await interaction.followUp({ content: `✅ Current Rank set to: **${selectedValue}**`, flags: MessageFlags.Ephemeral });
+    } else if (customId === 'ranked_to_select') {
+      await Order.findOneAndUpdate(
+        { channelId: interaction.channel.id },
+        { $set: { 'details.toRank': selectedValue } }
+      );
+      await interaction.followUp({ content: `✅ Desired Rank set to: **${selectedValue}**`, flags: MessageFlags.Ephemeral });
+    } else if (customId === 'ranked_p11_select') {
+      await Order.findOneAndUpdate(
+        { channelId: interaction.channel.id },
+        { $set: { 'details.power11Count': selectedValue } }
+      );
+      await interaction.followUp({ content: `✅ Power 11 Brawlers set to: **${selectedValue}**`, flags: MessageFlags.Ephemeral });
+    } else if (customId === 'order_payment_select') {
+      await Order.findOneAndUpdate(
+        { channelId: interaction.channel.id },
+        { $set: { paymentMethod: selectedValue } }
+      );
+      await interaction.followUp({ content: `💳 Payment Method set to: **${selectedValue.toUpperCase()}**`, flags: MessageFlags.Ephemeral });
     }
-    return;
+  } catch (err) {
+    console.error('Error in handleSelect:', err);
   }
-
-  // Payment Method Selection
-  if (customId === 'order_payment_select') {
-    const selectedValue = interaction.values[0];
-    await Order.findOneAndUpdate(
-      { channelId: interaction.channel.id, status: 'pending' },
-      { $set: { paymentMethod: selectedValue } }
-    );
-
-    await interaction.followUp({
-      content: `💳 Payment method set to: **${selectedValue.toUpperCase()}**`,
-      flags: MessageFlags.Ephemeral,
-    });
-    return;
-  }
-}
-
-/**
- * Calcola il prezzo per Ranked
- */
-function calculateRankedPrice(fromRankLabel, toRankLabel) {
-  const ranks = config.RANKS;
-  const fromIndex = ranks.findIndex((r) => r.label === fromRankLabel);
-  const toIndex = ranks.findIndex((r) => r.label === toRankLabel);
-
-  if (fromIndex === -1 || toIndex === -1 || fromIndex >= toIndex) {
-    return config.RANK_MIN_PRICE || 5;
-  }
-
-  let total = 0;
-  for (let i = fromIndex; i < toIndex; i++) {
-    total += config.RANK_STEP_COSTS[i] || 1;
-  }
-
-  return Math.max(total, config.RANK_MIN_PRICE || 5);
-}
-
-/**
- * Menu Select Power 11
- */
-function getPower11SelectMenu() {
-  const options = config.POWER11_OPTIONS.map((opt) => ({
-    label: opt.label,
-    value: opt.value,
-    emoji: opt.emoji || '⚡',
-  }));
-
-  return new ActionRowBuilder().addComponents(
-    new StringSelectMenuBuilder()
-      .setCustomId('ranked_p11_select')
-      .setPlaceholder('Select amount of Power 11 Brawlers...')
-      .addOptions(options)
-  );
-}
-
-/**
- * Menu Select Payment Methods
- */
-function getPaymentSelectMenu() {
-  const options = config.PAYMENT_METHODS.map((method) => {
-    const optionObj = {
-      label: method.label,
-      value: method.value,
-    };
-    if (method.emoji) {
-      optionObj.emoji = method.emoji;
-    }
-    return optionObj;
-  });
-
-  return new ActionRowBuilder().addComponents(
-    new StringSelectMenuBuilder()
-      .setCustomId('order_payment_select')
-      .setPlaceholder('Select your payment method...')
-      .addOptions(options)
-  );
 }
 
 module.exports = {
   startOrder,
   handleSelect,
-  calculateRankedPrice,
-  getPower11SelectMenu,
-  getPaymentSelectMenu,
 };
